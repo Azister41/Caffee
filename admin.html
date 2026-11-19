@@ -8,7 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 <style>
   *{box-sizing:border-box}
-  body{margin:0;font-family:Georgia, 'Times New Roman', serif;background:#5A0E1B;color:#F5E6C4;min-height:100vh}
+  body{margin:0;font-family:Georgia,serif;background:#5A0E1B;color:#F5E6C4;min-height:100vh}
   #loginPage{padding:100px 20px 20px;text-align:center}
   #loginPage h1{color:#E8C87A;font-size:28px;margin:0 0 28px}
   #loginPage input{width:100%;max-width:480px;display:block;margin:0 auto 14px;padding:14px 16px;background:#FFF6DE;border:2px solid #E8C87A;border-radius:8px;font-size:18px;font-family:Georgia,serif;color:#333;outline:none}
@@ -32,17 +32,12 @@
 </style>
 </head>
 <body>
-
-<!-- LOGIN - CUMA SANDI -->
 <div id="loginPage">
   <h1>Admin Meow Caffe</h1>
   <input id="pass" type="password" placeholder="Kata sandi">
   <button onclick="loginAdmin()">Masuk</button>
   <div id="loginErr"></div>
-  <p class="small" style="color:#E8C87A;opacity:.7">Khusus Owner. Jangan share ke karyawan.</p>
 </div>
-
-<!-- ADMIN -->
 <div id="adminPage">
   <h2>Admin Meow Caffe</h2>
   <div class="sub">Stok • Customer • Absensi • RAB • Omset</div>
@@ -55,16 +50,16 @@
   </div>
   <div id="page-stok">
     <div class="card"><b>Tambah / Update Stok</b>
-      <div class="row"><input id="stokNama" placeholder="Nama barang, cth: Susu UHT"><input id="stokQty" type="number" placeholder="Qty"></div>
-      <div class="row"><input id="stokSatuan" placeholder="Satuan: ml / pcs / kg"><input id="stokModal" type="number" placeholder="Harga Modal / pcs"></div>
+      <div class="row"><input id="stokNama" placeholder="Nama barang, cth: Susu"><input id="stokQty" type="number" placeholder="Qty"></div>
+      <div class="row"><input id="stokSatuan" placeholder="Satuan: ml / pcs"><input id="stokModal" type="number" placeholder="Harga Modal"></div>
       <button class="act" onclick="saveStok()">Simpan Stok</button>
     </div>
     <div class="card"><b>Daftar Stok</b><div id="listStok">Loading...</div></div>
   </div>
-  <div id="page-cust" style="display:none"><div class="card"><b>Data Customer</b><br><span class="small">Otomatis dari pesanan</span><div id="listCust">Loading...</div></div></div>
+  <div id="page-cust" style="display:none"><div class="card"><b>Data Customer</b><div id="listCust">Loading...</div></div></div>
   <div id="page-absen" style="display:none"><div class="card"><b>Rekap Absensi</b><div id="listAbsen">Belum ada data.</div></div></div>
   <div id="page-rab" style="display:none">
-    <div class="card"><b>Tambah RAB</b><input id="rabNama" placeholder="Keperluan, cth: Beli Mesin Espresso"><input id="rabBiaya" type="number" placeholder="Biaya Rp"><button class="act" onclick="saveRAB()">Simpan RAB</button></div>
+    <div class="card"><b>Tambah RAB</b><input id="rabNama" placeholder="Keperluan"><input id="rabBiaya" type="number" placeholder="Biaya Rp"><button class="act" onclick="saveRAB()">Simpan RAB</button></div>
     <div class="card"><b>Daftar RAB</b><div id="listRAB">Loading...</div><br><b id="totalRAB"></b></div>
   </div>
   <div id="page-omset" style="display:none">
@@ -73,9 +68,7 @@
   </div>
   <a class="linkKasir" href="kasir-dapur.html">← Ke Kasir dan Dapur</a>
 </div>
-
 <script>
-  // ===== LOGIN CUMA SANDI 1234 =====
   const OWNER_PASS = "1234";
   function loginAdmin(){
     let p = document.getElementById('pass').value.trim();
@@ -83,22 +76,18 @@
       document.getElementById('loginPage').style.display='none';
       document.getElementById('adminPage').style.display='block';
       loadData();
-    } else {
-      document.getElementById('loginErr').innerText = "Kata sandi salah!";
-    }
+    } else { document.getElementById('loginErr').innerText = "Kata sandi salah!"; }
   }
-  // Biar bisa tekan Enter juga
   document.getElementById('pass').addEventListener('keyup', function(e){ if(e.key==='Enter') loginAdmin(); });
 
-// Isi dengan config yang SAMA seperti di halaman menu
-const firebaseConfig = {
-  apiKey: "AIzaSyAoh5e5fpNfMHRpzH5qam0MIM1wjJa4QO8",
-  authDomain: "caffee-38697.firebaseapp.com",
-  projectId: "caffee-38697",
-  storageBucket: "caffee-38697.firebasestorage.app",
-  messagingSenderId: "465437187056",
-  appId: "1:465437187056:web:71ca80ad491623ea411b35"
-};
+  const firebaseConfig = {
+    apiKey: "AIzaSyAoh5e5fpNfMHRpzH5qam0MIM1wjJa4QO8",
+    authDomain: "caffee-38697.firebaseapp.com",
+    projectId: "caffee-38697",
+    storageBucket: "caffee-38697.firebasestorage.app",
+    messagingSenderId: "465437187056",
+    appId: "1:465437187056:web:71ca80ad491623ea411b35"
+  };
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
 
@@ -109,46 +98,50 @@ const firebaseConfig = {
     });
   }
   async function saveStok(){
-  try{
-    let nama=document.getElementById('stokNama').value, qty=+document.getElementById('stokQty').value;
-    let satuan=document.getElementById('stokSatuan').value, modal=+document.getElementById('stokModal').value;
-    if(!nama||!qty) return alert("Isi nama & qty");
-    await db.collection("stok").doc(nama).set({nama,qty,satuan,modal,updated:Date.now()});
-    alert("Tersimpan!");
-  }catch(e){ alert("GAGAL: "+e.message); }
-}
-async function saveRAB(){
-  try{
-    let nama=document.getElementById('rabNama').value, biaya=+document.getElementById('rabBiaya').value;
-    if(!nama||!biaya) return alert("Isi lengkap");
-    await db.collection("rab").add({nama,biaya,created:Date.now()});
-    alert("Tersimpan!");
-  }catch(e){ alert("GAGAL: "+e.message); }
-}
+    try{
+      let nama=document.getElementById('stokNama').value.trim(), qty=+document.getElementById('stokQty').value;
+      let satuan=document.getElementById('stokSatuan').value, modal=+document.getElementById('stokModal').value;
+      if(!nama||!qty) return alert("Isi nama & qty");
+      await db.collection("stok").doc(nama).set({nama,qty,satuan,modal,updated:Date.now()});
+      alert("Tersimpan!");
+      document.getElementById('stokNama').value=''; document.getElementById('stokQty').value='';
+    }catch(e){ alert("GAGAL SIMPAN: "+e.message); }
+  }
+  async function saveRAB(){
+    try{
+      let nama=document.getElementById('rabNama').value, biaya=+document.getElementById('rabBiaya').value;
+      if(!nama||!biaya) return alert("Isi lengkap");
+      await db.collection("rab").add({nama,biaya,created:Date.now()});
+      alert("Tersimpan!");
+    }catch(e){ alert("GAGAL: "+e.message); }
+  }
   function loadData(){
     db.collection("stok").onSnapshot(s=>{
+      if(s.empty){ document.getElementById('listStok').innerHTML="Belum ada stok. Silakan tambah."; return; }
       let h="<table><tr><th>Barang</th><th>Sisa</th><th>Modal</th><th></th></tr>";
       s.forEach(d=>{let v=d.data(); h+=`<tr><td>${v.nama}</td><td>${v.qty} ${v.satuan||''}</td><td>Rp ${(v.modal||0).toLocaleString('id-ID')}</td><td><button onclick="db.collection('stok').doc('${d.id}').delete()">Hapus</button></td></tr>`});
       document.getElementById('listStok').innerHTML=h+"</table>";
-    });
+    }, err=>{ document.getElementById('listStok').innerHTML="ERROR: "+err.message; });
+
     db.collection("pesanan").onSnapshot(s=>{
       let map={};
       s.forEach(d=>{let p=d.data(); if(!p.nama) return; if(!map[p.nama]) map[p.nama]={nama:p.nama,wa:p.wa||'-',jml:0,total:0}; map[p.nama].jml++; map[p.nama].total+=p.total||0;});
       let h="<table><tr><th>Nama</th><th>WA</th><th>Pesan</th><th>Total</th></tr>";
-      Object.values(map).sort((a,b)=>b.jml-a.jml).forEach(c=>{h+=`<tr><td>${c.nama}</td><td>${c.wa}</td><td>${c.jml}x</td><td>Rp ${c.total.toLocaleString('id-ID')}</td></tr>`});
+      Object.values(map).forEach(c=>{h+=`<tr><td>${c.nama}</td><td>${c.wa}</td><td>${c.jml}x</td><td>Rp ${c.total.toLocaleString('id-ID')}</td></tr>`});
       document.getElementById('listCust').innerHTML=h+"</table>";
       let all=[...s.docs].map(d=>d.data());
       let omsetHari=all.filter(p=>p.selesaiAt && Date.now()-p.selesaiAt<24*60*60*1000).reduce((a,p)=>a+(p.total||0),0);
       let omsetTotal=all.reduce((a,p)=>a+(p.total||0),0);
-      document.getElementById('omsetInfo').innerHTML=`Omset 24 jam: <b>Rp ${omsetHari.toLocaleString('id-ID')}</b><br>Total semua: <b>Rp ${omsetTotal.toLocaleString('id-ID')}</b> dari ${all.length} pesanan`;
+      document.getElementById('omsetInfo').innerHTML=`Omset 24 jam: <b>Rp ${omsetHari.toLocaleString('id-ID')}</b><br>Total: <b>Rp ${omsetTotal.toLocaleString('id-ID')}</b> dari ${all.length} pesanan`;
       let h2="<table><tr><th>Nama</th><th>Meja</th><th>Total</th><th>Status</th></tr>";
       all.slice(-20).reverse().forEach(p=>{h2+=`<tr><td>${p.nama||''}</td><td>${p.meja||''}</td><td>Rp ${(p.total||0).toLocaleString('id-ID')}</td><td>${p.status}</td></tr>`});
       document.getElementById('listAll').innerHTML=h2+"</table>";
-    });
+    }, err=>{ document.getElementById('listCust').innerHTML="ERROR: "+err.message; });
+
     db.collection("rab").onSnapshot(s=>{
       let h="", tot=0; s.forEach(d=>{let v=d.data(); tot+=v.biaya; h+=`<div style="display:flex;justify-content:space-between;padding:6px 0">${v.nama} <b>Rp ${v.biaya.toLocaleString('id-ID')}</b> <button onclick="db.collection('rab').doc('${d.id}').delete()">x</button></div>`});
-      document.getElementById('listRAB').innerHTML=h; document.getElementById('totalRAB').innerText="Total RAB: Rp "+tot.toLocaleString('id-ID');
-    });
+      document.getElementById('listRAB').innerHTML=h||"Belum ada RAB"; document.getElementById('totalRAB').innerText="Total RAB: Rp "+tot.toLocaleString('id-ID');
+    }, err=>{ document.getElementById('listRAB').innerHTML="ERROR: "+err.message; });
   }
 </script>
 </body>
