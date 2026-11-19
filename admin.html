@@ -109,17 +109,22 @@ const firebaseConfig = {
     });
   }
   async function saveStok(){
+  try{
     let nama=document.getElementById('stokNama').value, qty=+document.getElementById('stokQty').value;
     let satuan=document.getElementById('stokSatuan').value, modal=+document.getElementById('stokModal').value;
     if(!nama||!qty) return alert("Isi nama & qty");
     await db.collection("stok").doc(nama).set({nama,qty,satuan,modal,updated:Date.now()});
-    alert("Tersimpan");
-  }
-  async function saveRAB(){
+    alert("Tersimpan!");
+  }catch(e){ alert("GAGAL: "+e.message); }
+}
+async function saveRAB(){
+  try{
     let nama=document.getElementById('rabNama').value, biaya=+document.getElementById('rabBiaya').value;
     if(!nama||!biaya) return alert("Isi lengkap");
     await db.collection("rab").add({nama,biaya,created:Date.now()});
-  }
+    alert("Tersimpan!");
+  }catch(e){ alert("GAGAL: "+e.message); }
+}
   function loadData(){
     db.collection("stok").onSnapshot(s=>{
       let h="<table><tr><th>Barang</th><th>Sisa</th><th>Modal</th><th></th></tr>";
