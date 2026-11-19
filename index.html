@@ -272,17 +272,19 @@ import { getFirestore, collection, addDoc, doc, onSnapshot, serverTimestamp } fr
 
 // GANTI dengan config dari Firebase Console (Project settings > Your apps > Web)
 const firebaseConfig = {
-  apiKey: "ISI_API_KEY",
-  authDomain: "ISI.firebaseapp.com",
-  projectId: "ISI_PROJECT_ID",
-  appId: "ISI_APP_ID"
+  apiKey: "AIzaSyAoh5e5fpNfMHRpzH5qam0MIM1wjJa4QO8",
+  authDomain: "caffee-38697.firebaseapp.com",
+  projectId: "caffee-38697",
+  storageBucket: "caffee-38697.firebasestorage.app",
+  messagingSenderId: "465437187056",
+  appId: "1:465437187056:web:71ca80ad491623ea411b35"
 };
 
 let db = null, stop = null;
 try { db = getFirestore(initializeApp(firebaseConfig)); } catch(e){ console.error(e); }
 
 window.kirimKeDapur = async (d, tampil) => {
-  if(!db || firebaseConfig.apiKey==="ISI_API_KEY"){ tampil("Firebase belum diisi, pesanan belum terkirim ke dapur.",false); return; }
+  if(!db || false){ tampil("Firebase belum diisi, pesanan belum terkirim ke dapur.",false); return; }
   if(stop){ stop(); stop=null; }
   try{
     const ref = await addDoc(collection(db,"pesanan"), {...d, status:"menunggu_bayar", dibuat:serverTimestamp()});
