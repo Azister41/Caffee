@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meow Caffe - Menu</title>
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --merah:#7A1426; --merah-tua:#561020; --kertas:#FBF1DF; --emas:#C99A3B;
+    --emas-muda:#EBCB7E; --tinta:#3B1A1F; --mawar:#B5485B;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    font-family:'Libre Caslon Text',Georgia,serif;color:var(--kertas);min-height:100vh;
+    display:flex;flex-direction:column;align-items:center;overflow-x:hidden;
+    background:
+      radial-gradient(circle at 20% 10%,rgba(255,255,255,.07) 0 1px,transparent 2px) 0 0/22px 22px,
+      radial-gradient(ellipse at 50% 0%,#99283C 0%,var(--merah) 45%,var(--merah-tua) 100%);
+  }
+  .header{text-align:center;margin-top:26px;padding:0 20px}
+  .logo{width:300px;max-width:85%;display:block;margin:0 auto;filter:drop-shadow(0 8px 14px rgba(30,0,8,.45))}
+  .header h1{font-family:'Pinyon Script',cursive;font-weight:400;font-size:46px;line-height:1.1;color:var(--emas-muda);margin-top:14px}
+  .header p{font-style:italic;font-size:15px;line-height:1.6;margin-top:4px;color:#F0DCC0}
+
+  .stage{position:relative;width:100%;max-width:420px;height:380px;margin-top:14px;display:flex;justify-content:center;align-items:center}
+  .card{
+    position:absolute;width:170px;height:250px;background:var(--kertas);padding:9px;border-radius:4px;
+    transition:transform .5s cubic-bezier(.3,.7,.3,1),filter .4s,opacity .4s;cursor:pointer;
+    box-shadow:0 18px 30px rgba(30,0,8,.45),0 2px 0 rgba(255,255,255,.5) inset;
+    filter:sepia(.7) brightness(.62);opacity:.85;
+  }
+  .card::after{content:"";position:absolute;inset:5px;border:1px solid var(--emas);border-radius:2px;pointer-events:none}
+  .card img{width:100%;height:100%;object-fit:cover;display:block;border-radius:1px}
+  .card.active{width:204px;height:310px;filter:none;opacity:1;z-index:10;transform:rotate(-1.5deg)}
+  .card.left{transform:translateX(-120px) scale(.84) rotate(-8deg);z-index:5}
+  .card.right{transform:translateX(120px) scale(.84) rotate(8deg);z-index:5}
+  .card.left2{transform:translateX(-170px) scale(.7) rotate(-13deg);z-index:1}
+  .card.right2{transform:translateX(170px) scale(.7) rotate(13deg);z-index:1}
+  .card.hide{display:none}
+
+  .nav{position:absolute;top:50%;width:100%;display:flex;justify-content:space-between;padding:0 8px;z-index:20;transform:translateY(-50%);pointer-events:none}
+  .nav button{pointer-events:auto;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--emas);
+    background:var(--merah-tua);color:var(--emas-muda);font:22px/1 'Libre Caslon Text',serif;cursor:pointer;padding-bottom:3px}
+  button:focus-visible{outline:2px solid var(--emas-muda);outline-offset:3px}
+
+  .info{text-align:center;margin-top:4px;padding:0 20px;min-height:128px}
+  .info h2{font-family:'Pinyon Script',cursive;font-weight:400;font-size:40px;line-height:1.15;color:#fff}
+  .info p{font-style:italic;font-size:14px;color:#F0DCC0;margin-top:2px}
+  .harga{margin-top:10px;display:inline-block;padding:6px 22px;color:var(--tinta);font-weight:700;font-size:15px;
+    background:linear-gradient(135deg,var(--emas-muda),var(--emas) 55%,#E4BE68);
+    clip-path:polygon(8px 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,8px 100%,0 50%)}
+
+  .dots{display:flex;gap:12px;margin:10px 0 4px}
+  .dots span{width:8px;height:8px;transform:rotate(45deg);border:1px solid var(--emas);cursor:pointer;transition:background .3s}
+  .dots span.on{background:var(--emas-muda)}
+
+  .meja{margin-top:20px;background:var(--kertas);color:var(--tinta);padding:20px 16px 16px;border-radius:4px;width:90%;max-width:380px;text-align:center;
+    position:relative;box-shadow:0 14px 28px rgba(30,0,8,.4)}
+  .meja::before{content:"";position:absolute;inset:6px;border:1px solid var(--emas);pointer-events:none}
+  .meja h3{font-family:'Pinyon Script',cursive;font-weight:400;font-size:30px;color:var(--merah)}
+  .meja small{display:block;font-style:italic;font-size:13px;color:#7A5A52}
+  .meja-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-top:14px}
+  .meja-grid button{aspect-ratio:1;border:1px solid var(--emas);background:transparent;border-radius:50%;
+    font:700 15px 'Libre Caslon Text',serif;color:var(--tinta);cursor:pointer;transition:background .2s,color .2s}
+  .meja-grid button.on,.takeaway.on{background:var(--merah);color:var(--emas-muda);border-color:var(--merah)}
+  .takeaway{margin-top:14px;width:100%;padding:11px;border:1px solid var(--emas);background:transparent;
+    font:italic 15px 'Libre Caslon Text',serif;color:var(--tinta);cursor:pointer;border-radius:2px}
+
+  .nama{margin-top:14px;width:100%;padding:11px;border:1px solid var(--emas);background:transparent;border-radius:2px;
+    font:italic 15px 'Libre Caslon Text',serif;color:var(--tinta);text-align:center}
+  .nama::placeholder{color:#9A7B72}
+  .status{margin:0 0 14px;padding:10px;border:1px dashed var(--emas);font-style:italic;font-size:15px;color:#6B4A44}
+  .status.ok{background:var(--merah);color:var(--emas-muda);border-style:solid;font-weight:700;font-style:normal}
+  .order{
+    margin-top:26px;width:90%;max-width:380px;padding:16px 24px;border-radius:999px;
+    border:1.5px solid var(--emas);cursor:pointer;
+    background:radial-gradient(ellipse at 35% 25%,#D4586B,#9E2238 55%,#6A1020);
+    color:var(--emas-muda);font:400 30px/1 'Pinyon Script',cursive;
+    box-shadow:0 8px 18px rgba(0,0,0,.4),0 0 0 4px rgba(158,34,56,.45);
+    transition:transform .2s;
+  }
+  .order:active{transform:scale(.97)}
+  .catatan{margin:18px 0 40px;width:90%;max-width:380px;min-height:20px;text-align:center;font-style:italic;font-size:15px;line-height:1.6;color:#F0DCC0}
+
+  /* ===== Pembayaran ===== */
+  .bayar{position:fixed;inset:0;z-index:100;display:none;overflow-y:auto;padding:24px 14px 40px;
+    background:rgba(40,4,14,.88);justify-content:center;align-items:flex-start}
+  .bayar.buka{display:flex}
+  .lembar{position:relative;width:100%;max-width:400px;background:var(--kertas);color:var(--tinta);padding:26px 20px 22px;border-radius:4px;
+    box-shadow:0 20px 40px rgba(0,0,0,.5);text-align:center}
+  .lembar::before{content:"";position:absolute;inset:6px;border:1px solid var(--emas);pointer-events:none}
+  .lembar h3{font-family:'Pinyon Script',cursive;font-weight:400;font-size:34px;color:var(--merah)}
+  .ringkas{margin:10px 0 4px;font-style:italic;font-size:15px;line-height:1.6;color:#6B4A44}
+  .total{font-weight:700;font-size:26px;margin:6px 0 14px}
+  .tab{display:flex;gap:8px;margin-bottom:14px}
+  .tab button{flex:1;padding:10px 4px;border:1px solid var(--emas);background:transparent;border-radius:999px;
+    font:italic 15px 'Libre Caslon Text',serif;color:var(--tinta);cursor:pointer}
+  .tab button.on{background:var(--merah);color:var(--emas-muda);border-color:var(--merah)}
+  .panel{display:none;font-size:15px;line-height:1.6}
+  .panel.on{display:block}
+  .panel img{width:230px;max-width:80%;border:1px solid var(--emas);padding:6px;background:#fff;image-rendering:pixelated}
+  .rek{font-weight:700;font-size:24px;letter-spacing:1px;margin:6px 0 0}
+  .salin{margin-top:10px;padding:9px 18px;border:1px solid var(--emas);background:transparent;border-radius:999px;
+    font:italic 14px 'Libre Caslon Text',serif;color:var(--tinta);cursor:pointer}
+  .penting{margin-top:10px;font-weight:700;color:var(--merah)}
+  .kembali{margin-top:18px;background:none;border:none;font:italic 15px 'Libre Caslon Text',serif;color:#7A5A52;text-decoration:underline;cursor:pointer}
+  @media (prefers-reduced-motion:reduce){.card,.order{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <img class="logo" src="https://i.postimg.cc/bNhgpKVD/1795066229204.png" alt="Meow Caffe">
+  <h1>Meow Caffe</h1>
+  <p>Ada secangkir hangat yang menunggu kamu.<br>Mau pilih yang mana hari ini?</p>
+</div>
+
+<div class="stage" id="stage">
+  <div class="nav">
+    <button onclick="geser(-1)" aria-label="Menu sebelumnya">‹</button>
+    <button onclick="geser(1)" aria-label="Menu berikutnya">›</button>
+  </div>
+</div>
+
+<div class="info">
+  <h2 id="nama">Kopi Susu Gula Aren</h2>
+  <p id="tag">Best seller, racikan khas kami</p>
+  <div class="harga" id="harga">Rp 18.000</div>
+</div>
+
+<div class="dots" id="dots"></div>
+
+<div class="meja">
+  <h3>Duduk di mana?</h3>
+  <small>Pilih nomor meja, kami antar ke sana</small>
+  <div class="meja-grid" id="mejaGrid"></div>
+  <button class="takeaway" id="takeaway" onclick="pilihTakeaway(this)">Dibawa pulang, tanpa meja</button>
+  <input class="nama" id="nama_pemesan" maxlength="30" placeholder="Atas nama siapa?" autocomplete="off">
+</div>
+
+<button class="order" onclick="pesan()">Kirim pesanan</button>
+<p class="catatan" id="catatan" aria-live="polite"></p>
+
+
+<div class="bayar" id="bayar" role="dialog" aria-modal="true" aria-label="Pembayaran">
+  <div class="lembar">
+    <h3>Tinggal satu langkah</h3>
+    <div class="ringkas" id="ringkas"></div>
+    <div class="total" id="total"></div>
+    <div class="status" id="statusBayar">Menunggu pembayaran...</div>
+    <div class="tab">
+      <button class="on" onclick="tab(0,this)">Kasir</button>
+      <button onclick="tab(1,this)">Transfer</button>
+      <button onclick="tab(2,this)">QRIS</button>
+    </div>
+    <div class="panel on">
+      <p>Datang ke kasir, sebutkan nama dan kode pesananmu. Setelah kasir menandai lunas, pesanan langsung masuk ke dapur.</p>
+    </div>
+    <div class="panel">
+      <p>BNI atas nama</p>
+      <p><b>Muhamad Abdul Azis</b></p>
+      <p class="rek">1816253845</p>
+      <button class="salin" onclick="salin('1816253845',this)">Salin nomor rekening</button>
+      <p class="penting" id="nomTf"></p>
+      <p>Setelah transfer, tunjukkan bukti ke kasir. Pesanan masuk dapur setelah kasir mengonfirmasi.</p>
+    </div>
+    <div class="panel">
+      <img src="https://i.postimg.cc/7ZZcPcWt/1793770521-picsay.png" alt="QRIS Meow Caffe">
+      <p class="penting" id="nomQ"></p>
+      <p>Masukkan nominal sendiri di aplikasi, lalu tunjukkan bukti ke kasir. Pesanan masuk dapur setelah kasir mengonfirmasi.</p>
+    </div>
+    <button class="kembali" onclick="tutup()">Kembali ke menu</button>
+  </div>
+</div>
+
+<script>
+const menus = [
+  {nama:"Kopi Susu Gula Aren", tag:"Best seller, racikan khas kami", harga:"Rp 18.000", img:"https://images.unsplash.com/photo-1541167760496-1628856ab772?w=500&q=80"},
+  {nama:"Americano", tag:"Pekat dan jujur, tanpa gula", harga:"Rp 15.000", img:"https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=500&q=80"},
+  {nama:"Cappuccino", tag:"Lembut dengan busa tebal", harga:"Rp 20.000", img:"https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=500&q=80"},
+  {nama:"Matcha Latte", tag:"Teh hijau yang menenangkan", harga:"Rp 22.000", img:"https://images.unsplash.com/photo-1536013455962-2b9d9a0d1d4e?w=500&q=80"},
+  {nama:"Caramel Macchiato", tag:"Manis karamel di tiap tegukan", harga:"Rp 24.000", img:"https://images.unsplash.com/photo-1485808191679-5f86510681a4?w=500&q=80"},
+  {nama:"Es Kopi Senja", tag:"Spesial, jumlah terbatas", harga:"Rp 25.000", img:"https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=500&q=80"},
+];
+let idx = 0, mejaDipilih = null, timer;
+const stage = document.getElementById('stage');
+const dots = document.getElementById('dots');
+const takeaway = document.getElementById('takeaway');
+
+function render(){
+  stage.querySelectorAll('.card').forEach(e=>e.remove());
+  menus.forEach((m,i)=>{
+    let diff = i - idx;
+    if(diff > 3) diff -= menus.length;
+    if(diff < -3) diff += menus.length;
+    const div = document.createElement('div');
+    div.className = 'card ' + (diff===0?'active':diff===-1?'left':diff===1?'right':diff===-2?'left2':diff===2?'right2':'hide');
+    div.innerHTML = `<img src="${m.img}" alt="${m.nama}">`;
+    div.onclick = ()=>{ idx=i; render(); };
+    stage.appendChild(div);
+  });
+  document.getElementById('nama').innerText = menus[idx].nama;
+  document.getElementById('tag').innerText = menus[idx].tag;
+  document.getElementById('harga').innerText = menus[idx].harga;
+  dots.innerHTML = menus.map((_,i)=>`<span class="${i===idx?'on':''}" onclick="idx=${i};render()"></span>`).join('');
+}
+function geser(d){ idx = (idx + d + menus.length) % menus.length; render(); resetTimer(); }
+function resetTimer(){ clearInterval(timer); timer = setInterval(()=>{ idx=(idx+1)%menus.length; render(); }, 4500); }
+
+const grid = document.getElementById('mejaGrid');
+for(let i=1;i<=12;i++){
+  const b=document.createElement('button');
+  b.innerText=i;
+  b.onclick=()=>{
+    mejaDipilih=i;
+    document.querySelectorAll('#mejaGrid button').forEach(x=>x.classList.remove('on'));
+    takeaway.classList.remove('on');
+    b.classList.add('on');
+  };
+  grid.appendChild(b);
+}
+function pilihTakeaway(el){
+  mejaDipilih='Dibawa pulang';
+  document.querySelectorAll('#mejaGrid button').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+}
+let pesananDikunci=null;
+function pesan(){
+  const c=document.getElementById('catatan');
+  if(mejaDipilih===null){ c.innerHTML='Pilih nomor meja dulu ya, atau pilih dibawa pulang.'; return; }
+  const nm=document.getElementById('nama_pemesan').value.trim();
+  if(!nm){ c.innerHTML='Tulis nama kamu dulu ya, biar kami tahu siapa yang dipanggil.'; return; }
+  c.innerHTML='';
+  clearInterval(timer);
+  const m=menus[idx];
+  const angka=parseInt(m.harga.replace(/\D/g,''),10);
+  const rp='Rp '+angka.toLocaleString('id-ID');
+  const lokasi=typeof mejaDipilih==='number'?'Meja '+mejaDipilih:'Dibawa pulang';
+  pesananDikunci={m,angka};
+  document.getElementById('ringkas').innerHTML=m.nama+'<br>'+lokasi;
+  document.getElementById('total').innerText=rp;
+  document.getElementById('nomTf').innerText='Transfer tepat '+rp;
+  document.getElementById('nomQ').innerText='Bayar tepat '+rp;
+  tab(0,document.querySelector('.tab button'));
+  document.getElementById('bayar').classList.add('buka');
+  const st=document.getElementById('statusBayar');
+  st.className='status'; st.innerText='Mengirim pesanan...';
+  if(window.kirimKeDapur){
+    window.kirimKeDapur({menu:m.nama,total:angka,lokasi:lokasi,nama:nm},(teks,ok)=>{
+      st.innerText=teks; st.className='status'+(ok?' ok':'');
+    });
+  } else { st.innerText='Firebase belum terpasang, pesanan belum terkirim ke dapur.'; }
+}
+function tab(n,el){
+  document.querySelectorAll('.tab button').forEach(b=>b.classList.remove('on'));
+  el.classList.add('on');
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('on',i===n));
+}
+function tutup(){ document.getElementById('bayar').classList.remove('buka'); resetTimer(); }
+function salin(t,el){
+  const ok=()=>{ el.innerText='Tersalin'; setTimeout(()=>el.innerText='Salin nomor rekening',1800); };
+  if(navigator.clipboard){ navigator.clipboard.writeText(t).then(ok).catch(()=>{}); } else { ok(); }
+}
+render();
+resetTimer();
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, addDoc, doc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+// GANTI dengan config dari Firebase Console (Project settings > Your apps > Web)
+const firebaseConfig = {
+  apiKey: "ISI_API_KEY",
+  authDomain: "ISI.firebaseapp.com",
+  projectId: "ISI_PROJECT_ID",
+  appId: "ISI_APP_ID"
+};
+
+let db = null, stop = null;
+try { db = getFirestore(initializeApp(firebaseConfig)); } catch(e){ console.error(e); }
+
+window.kirimKeDapur = async (d, tampil) => {
+  if(!db || firebaseConfig.apiKey==="ISI_API_KEY"){ tampil("Firebase belum diisi, pesanan belum terkirim ke dapur.",false); return; }
+  if(stop){ stop(); stop=null; }
+  try{
+    const ref = await addDoc(collection(db,"pesanan"), {...d, status:"menunggu_bayar", dibuat:serverTimestamp()});
+    const kode = ref.id.slice(0,4).toUpperCase();
+    tampil("Kode pesanan "+kode+". Menunggu pembayaran, pesanan belum masuk dapur.",false);
+    stop = onSnapshot(doc(db,"pesanan",ref.id), snap=>{
+      const x = snap.data(); if(!x) return;
+      if(x.status==="lunas") tampil("Pembayaran berhasil. Pesananmu sedang dibuat. Kode "+kode,true);
+      else if(x.status==="selesai") tampil("Pesananmu sudah siap, kode "+kode+". Silakan diambil.",true);
+      else if(x.status==="dibatalkan") tampil("Pesanan dibatalkan oleh kasir. Silakan tanya ke kasir.",false);
+    });
+  }catch(e){ console.error(e); tampil("Gagal mengirim pesanan. Cek internet lalu coba lagi.",false); }
+};
+</script>
+</body>
+</html>

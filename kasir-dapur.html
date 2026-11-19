@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meow Caffe - Kasir dan Dapur</title>
+<style>
+  :root{--merah:#7A1426;--kertas:#FBF1DF;--emas:#C99A3B;--tinta:#3B1A1F}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Georgia,serif;background:#561020;color:var(--kertas);padding:16px;min-height:100vh}
+  h1{font-size:22px;color:#EBCB7E;margin-bottom:12px}
+  h2{font-size:16px;margin:18px 0 8px;color:#EBCB7E;font-weight:400;letter-spacing:.5px}
+  .login{max-width:320px;margin:60px auto;text-align:center}
+  input{width:100%;padding:12px;margin:6px 0;border-radius:4px;border:1px solid var(--emas);background:var(--kertas);font:16px Georgia,serif}
+  button{cursor:pointer;font:15px Georgia,serif;border-radius:999px;padding:10px 16px;border:1px solid var(--emas)}
+  .utama{background:var(--emas);color:var(--tinta);width:100%;margin-top:8px}
+  .atas{display:flex;justify-content:space-between;align-items:center}
+  .keluar{background:none;color:var(--kertas);padding:6px 12px}
+  .grid{display:grid;gap:10px}
+  @media(min-width:760px){.dua{display:grid;grid-template-columns:1fr 1fr;gap:20px}}
+  .tiket{background:var(--kertas);color:var(--tinta);padding:12px 14px;border-radius:4px;border-left:8px solid #C0392B}
+  .tiket.lunas{border-left-color:#2E7D32}
+  .baris{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .kode{font-weight:700;font-size:18px}
+  .menu{font-size:17px;margin:4px 0}
+  .kecil{font-size:13px;color:#7A5A52}
+  .aksi{display:flex;gap:8px;margin-top:10px}
+  .aksi button{flex:1;background:transparent;color:var(--tinta)}
+  .aksi .ok{background:#2E7D32;color:#fff;border-color:#2E7D32}
+  .kosong{font-style:italic;color:#D9C2A0}
+  #err{color:#FFB4B4;font-size:14px;min-height:18px}
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+  <h1>Kasir dan Dapur</h1>
+  <input id="em" type="email" placeholder="Email" autocomplete="username">
+  <input id="pw" type="password" placeholder="Kata sandi" autocomplete="current-password">
+  <button class="utama" onclick="masuk()">Masuk</button>
+  <p id="err"></p>
+</div>
+
+<div id="app" hidden>
+  <div class="atas"><h1>Meow Caffe</h1><button class="keluar" onclick="keluar()">Keluar</button></div>
+  <div class="dua">
+    <div><h2>Menunggu bayar (kasir)</h2><div class="grid" id="kolBayar"></div></div>
+    <div><h2>Masuk dapur (sudah lunas)</h2><div class="grid" id="kolDapur"></div></div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+
+// Isi dengan config yang SAMA seperti di halaman menu
+const firebaseConfig = {
+  apiKey: "ISI_API_KEY",
+  authDomain: "ISI.firebaseapp.com",
+  projectId: "ISI_PROJECT_ID",
+  appId: "ISI_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app), auth = getAuth(app);
+let stop = null, awal = true, kenal = new Set();
+const $ = id => document.getElementById(id);
+
+window.masuk = async () => {
+  $('err').innerText = '';
+  try { await signInWithEmailAndPassword(auth, $('em').value.trim(), $('pw').value); }
+  catch(e){ $('err').innerText = 'Email atau kata sandi salah.'; }
+};
+window.keluar = () => signOut(auth);
+
+onAuthStateChanged(auth, user => {
+  $('login').hidden = !!user; $('app').hidden = !user;
+  if(stop){ stop(); stop = null; }
+  if(user){
+    awal = true; kenal = new Set();
+    stop = onSnapshot(query(collection(db,'pesanan'), orderBy('dibuat','desc'), limit(40)), render);
+  }
+});
+
+function bunyi(){
+  try{
+    const c = new (window.AudioContext||window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = .15;
+    o.start(); o.stop(c.currentTime + .25);
+  }catch(e){}
+}
+const ubah = (id, status) => updateDoc(doc(db,'pesanan',id), {status});
+
+function tiket(d, id, tombol){
+  const el = document.createElement('div');
+  el.className = 'tiket ' + (d.status==='lunas' ? 'lunas' : '');
+  const r = document.createElement('div'); r.className = 'baris';
+  const k = document.createElement('span'); k.className = 'kode'; k.textContent = '#' + id.slice(0,4).toUpperCase();
+  const t = document.createElement('span'); t.textContent = 'Rp ' + Number(d.total||0).toLocaleString('id-ID');
+  r.append(k, t);
+  const m = document.createElement('div'); m.className = 'menu'; m.textContent = d.menu;
+  const n = document.createElement('div'); n.className = 'kecil'; n.textContent = d.nama + ' | ' + d.lokasi;
+  const a = document.createElement('div'); a.className = 'aksi';
+  tombol.forEach(([teks, fn, cls]) => { const b = document.createElement('button'); b.textContent = teks; if(cls) b.className = cls; b.onclick = fn; a.append(b); });
+  el.append(r, m, n, a);
+  return el;
+}
+
+function render(snap){
+  const bayar = $('kolBayar'), dapur = $('kolDapur');
+  bayar.innerHTML = ''; dapur.innerHTML = '';
+  let baru = false;
+  snap.forEach(s => {
+    const d = s.data(), id = s.id;
+    if(!kenal.has(id+d.status)){ kenal.add(id+d.status); if(!awal) baru = true; }
+    if(d.status === 'menunggu_bayar')
+      bayar.append(tiket(d, id, [['Batalkan', () => ubah(id,'dibatalkan')], ['Sudah dibayar', () => ubah(id,'lunas'), 'ok']]));
+    else if(d.status === 'lunas')
+      dapur.append(tiket(d, id, [['Selesai', () => ubah(id,'selesai'), 'ok']]));
+  });
+  [bayar, dapur].forEach(x => { if(!x.children.length){ const p = document.createElement('p'); p.className = 'kosong'; p.textContent = 'Belum ada pesanan.'; x.append(p); } });
+  if(baru) bunyi();
+  awal = false;
+}
+</script>
+</body>
+</html>
