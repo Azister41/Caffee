@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meow Caffe - Admin</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Georgia, 'Times New Roman', serif;background:#5A0E1B;color:#F5E6C4;min-height:100vh}
+  #loginPage{padding:100px 20px 20px;text-align:center}
+  #loginPage h1{color:#E8C87A;font-size:28px;margin:0 0 28px}
+  #loginPage input{width:100%;max-width:480px;display:block;margin:0 auto 14px;padding:14px 16px;background:#FFF6DE;border:2px solid #E8C87A;border-radius:8px;font-size:18px;font-family:Georgia,serif;color:#333;outline:none}
+  #loginPage button{width:100%;max-width:480px;padding:14px;background:#D9A62E;border:none;border-radius:999px;font-size:18px;font-family:Georgia,serif;cursor:pointer;color:#2b0a0f}
+  #loginErr{color:#ffcccc;font-size:14px;margin-top:10px;min-height:18px}
+  #adminPage{display:none;padding:16px;max-width:600px;margin:0 auto}
+  #adminPage h2{color:#E8C87A;text-align:center;margin:8px 0 4px;font-size:26px}
+  .sub{text-align:center;opacity:.8;font-size:13px;margin-bottom:16px}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:16px}
+  .tabs button{background:#FFF6DE;color:#5A0E1B;border:2px solid #E8C87A;padding:9px 13px;border-radius:999px;font-family:Georgia,serif;font-weight:bold;cursor:pointer}
+  .tabs button.on{background:#D9A62E;color:#2b0a0f}
+  .card{background:#FFF6DE;color:#333;padding:14px;border-radius:14px;margin-bottom:12px}
+  .card b{color:#5A0E1B}
+  .card input{width:100%;padding:11px;border:1px solid #E8C87A;background:#fff;border-radius:8px;margin:6px 0;font-family:Georgia,serif;font-size:15px}
+  .act{background:#D9A62E;color:#2b0a0f;border:none;padding:11px 16px;border-radius:999px;font-family:Georgia,serif;font-weight:bold;cursor:pointer;width:100%;font-size:16px}
+  .row{display:flex;gap:8px}.row>*{flex:1}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  td,th{padding:8px;border-bottom:1px solid #e8d9b0;text-align:left}
+  .small{font-size:12px;opacity:.7}
+  .linkKasir{display:block;text-align:center;color:#E8C87A;margin:14px 0;text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN - CUMA SANDI -->
+<div id="loginPage">
+  <h1>Admin Meow Caffe</h1>
+  <input id="pass" type="password" placeholder="Kata sandi">
+  <button onclick="loginAdmin()">Masuk</button>
+  <div id="loginErr"></div>
+  <p class="small" style="color:#E8C87A;opacity:.7">Khusus Owner. Jangan share ke karyawan.</p>
+</div>
+
+<!-- ADMIN -->
+<div id="adminPage">
+  <h2>Admin Meow Caffe</h2>
+  <div class="sub">Stok • Customer • Absensi • RAB • Omset</div>
+  <div class="tabs">
+    <button id="t-stok" class="on" onclick="showTab('stok')">Stok</button>
+    <button id="t-cust" onclick="showTab('cust')">Customer</button>
+    <button id="t-absen" onclick="showTab('absen')">Absensi</button>
+    <button id="t-rab" onclick="showTab('rab')">RAB</button>
+    <button id="t-omset" onclick="showTab('omset')">Omset</button>
+  </div>
+  <div id="page-stok">
+    <div class="card"><b>Tambah / Update Stok</b>
+      <div class="row"><input id="stokNama" placeholder="Nama barang, cth: Susu UHT"><input id="stokQty" type="number" placeholder="Qty"></div>
+      <div class="row"><input id="stokSatuan" placeholder="Satuan: ml / pcs / kg"><input id="stokModal" type="number" placeholder="Harga Modal / pcs"></div>
+      <button class="act" onclick="saveStok()">Simpan Stok</button>
+    </div>
+    <div class="card"><b>Daftar Stok</b><div id="listStok">Loading...</div></div>
+  </div>
+  <div id="page-cust" style="display:none"><div class="card"><b>Data Customer</b><br><span class="small">Otomatis dari pesanan</span><div id="listCust">Loading...</div></div></div>
+  <div id="page-absen" style="display:none"><div class="card"><b>Rekap Absensi</b><div id="listAbsen">Belum ada data.</div></div></div>
+  <div id="page-rab" style="display:none">
+    <div class="card"><b>Tambah RAB</b><input id="rabNama" placeholder="Keperluan, cth: Beli Mesin Espresso"><input id="rabBiaya" type="number" placeholder="Biaya Rp"><button class="act" onclick="saveRAB()">Simpan RAB</button></div>
+    <div class="card"><b>Daftar RAB</b><div id="listRAB">Loading...</div><br><b id="totalRAB"></b></div>
+  </div>
+  <div id="page-omset" style="display:none">
+    <div class="card"><b>Omset</b><div id="omsetInfo">Loading...</div></div>
+    <div class="card"><b>Semua Pesanan</b><div id="listAll">Loading...</div></div>
+  </div>
+  <a class="linkKasir" href="kasir-dapur.html">← Ke Kasir dan Dapur</a>
+</div>
+
+<script>
+  // ===== LOGIN CUMA SANDI 1234 =====
+  const OWNER_PASS = "1234";
+  function loginAdmin(){
+    let p = document.getElementById('pass').value.trim();
+    if(p === OWNER_PASS){
+      document.getElementById('loginPage').style.display='none';
+      document.getElementById('adminPage').style.display='block';
+      loadData();
+    } else {
+      document.getElementById('loginErr').innerText = "Kata sandi salah!";
+    }
+  }
+  // Biar bisa tekan Enter juga
+  document.getElementById('pass').addEventListener('keyup', function(e){ if(e.key==='Enter') loginAdmin(); });
+
+// Isi dengan config yang SAMA seperti di halaman menu
+const firebaseConfig = {
+  apiKey: "AIzaSyAoh5e5fpNfMHRpzH5qam0MIM1wjJa4QO8",
+  authDomain: "caffee-38697.firebaseapp.com",
+  projectId: "caffee-38697",
+  storageBucket: "caffee-38697.firebasestorage.app",
+  messagingSenderId: "465437187056",
+  appId: "1:465437187056:web:71ca80ad491623ea411b35"
+};
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
+  function showTab(n){
+    ['stok','cust','absen','rab','omset'].forEach(x=>{
+      document.getElementById('page-'+x).style.display = x===n?'block':'none';
+      document.getElementById('t-'+x).className = x===n?'on':'';
+    });
+  }
+  async function saveStok(){
+    let nama=document.getElementById('stokNama').value, qty=+document.getElementById('stokQty').value;
+    let satuan=document.getElementById('stokSatuan').value, modal=+document.getElementById('stokModal').value;
+    if(!nama||!qty) return alert("Isi nama & qty");
+    await db.collection("stok").doc(nama).set({nama,qty,satuan,modal,updated:Date.now()});
+    alert("Tersimpan");
+  }
+  async function saveRAB(){
+    let nama=document.getElementById('rabNama').value, biaya=+document.getElementById('rabBiaya').value;
+    if(!nama||!biaya) return alert("Isi lengkap");
+    await db.collection("rab").add({nama,biaya,created:Date.now()});
+  }
+  function loadData(){
+    db.collection("stok").onSnapshot(s=>{
+      let h="<table><tr><th>Barang</th><th>Sisa</th><th>Modal</th><th></th></tr>";
+      s.forEach(d=>{let v=d.data(); h+=`<tr><td>${v.nama}</td><td>${v.qty} ${v.satuan||''}</td><td>Rp ${(v.modal||0).toLocaleString('id-ID')}</td><td><button onclick="db.collection('stok').doc('${d.id}').delete()">Hapus</button></td></tr>`});
+      document.getElementById('listStok').innerHTML=h+"</table>";
+    });
+    db.collection("pesanan").onSnapshot(s=>{
+      let map={};
+      s.forEach(d=>{let p=d.data(); if(!p.nama) return; if(!map[p.nama]) map[p.nama]={nama:p.nama,wa:p.wa||'-',jml:0,total:0}; map[p.nama].jml++; map[p.nama].total+=p.total||0;});
+      let h="<table><tr><th>Nama</th><th>WA</th><th>Pesan</th><th>Total</th></tr>";
+      Object.values(map).sort((a,b)=>b.jml-a.jml).forEach(c=>{h+=`<tr><td>${c.nama}</td><td>${c.wa}</td><td>${c.jml}x</td><td>Rp ${c.total.toLocaleString('id-ID')}</td></tr>`});
+      document.getElementById('listCust').innerHTML=h+"</table>";
+      let all=[...s.docs].map(d=>d.data());
+      let omsetHari=all.filter(p=>p.selesaiAt && Date.now()-p.selesaiAt<24*60*60*1000).reduce((a,p)=>a+(p.total||0),0);
+      let omsetTotal=all.reduce((a,p)=>a+(p.total||0),0);
+      document.getElementById('omsetInfo').innerHTML=`Omset 24 jam: <b>Rp ${omsetHari.toLocaleString('id-ID')}</b><br>Total semua: <b>Rp ${omsetTotal.toLocaleString('id-ID')}</b> dari ${all.length} pesanan`;
+      let h2="<table><tr><th>Nama</th><th>Meja</th><th>Total</th><th>Status</th></tr>";
+      all.slice(-20).reverse().forEach(p=>{h2+=`<tr><td>${p.nama||''}</td><td>${p.meja||''}</td><td>Rp ${(p.total||0).toLocaleString('id-ID')}</td><td>${p.status}</td></tr>`});
+      document.getElementById('listAll').innerHTML=h2+"</table>";
+    });
+    db.collection("rab").onSnapshot(s=>{
+      let h="", tot=0; s.forEach(d=>{let v=d.data(); tot+=v.biaya; h+=`<div style="display:flex;justify-content:space-between;padding:6px 0">${v.nama} <b>Rp ${v.biaya.toLocaleString('id-ID')}</b> <button onclick="db.collection('rab').doc('${d.id}').delete()">x</button></div>`});
+      document.getElementById('listRAB').innerHTML=h; document.getElementById('totalRAB').innerText="Total RAB: Rp "+tot.toLocaleString('id-ID');
+    });
+  }
+</script>
+</body>
+</html>
