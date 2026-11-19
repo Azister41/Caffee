@@ -81,7 +81,32 @@
     transition:transform .2s;
   }
   .order:active{transform:scale(.97)}
-  .catatan{margin:18px 0 40px;width:90%;max-width:380px;min-height:20px;text-align:center;font-style:italic;font-size:15px;line-height:1.6;color:#F0DCC0}
+  .catatan{margin:18px 0 90px;width:90%;max-width:380px;min-height:20px;text-align:center;font-style:italic;font-size:15px;line-height:1.6;color:#F0DCC0}
+
+  /* ===== Keranjang ===== */
+  .beli{display:flex;gap:10px;align-items:center;justify-content:center;margin-top:8px;width:90%;max-width:380px}
+  .stepper{display:flex;align-items:center;gap:4px;border:1px solid var(--emas);border-radius:999px;padding:3px}
+  .stepper button{width:34px;height:34px;border-radius:50%;border:none;background:var(--merah-tua);color:var(--emas-muda);
+    font:20px/1 'Libre Caslon Text',serif;cursor:pointer;padding-bottom:2px}
+  .stepper span{min-width:26px;text-align:center;font-weight:700}
+  .tambah{flex:1;padding:11px 12px;border-radius:999px;border:1.5px solid var(--emas);background:transparent;
+    color:var(--emas-muda);font:italic 16px 'Libre Caslon Text',serif;cursor:pointer}
+  .tambah:active{transform:scale(.97)}
+  .umpan{min-height:22px;margin-top:6px;font-style:italic;font-size:14px;color:#F0DCC0;text-align:center;padding:0 20px}
+  .keranjang{margin-top:12px;background:var(--kertas);color:var(--tinta);padding:20px 16px 16px;border-radius:4px;
+    width:90%;max-width:380px;position:relative;box-shadow:0 14px 28px rgba(30,0,8,.4)}
+  .keranjang::before{content:"";position:absolute;inset:6px;border:1px solid var(--emas);pointer-events:none}
+  .keranjang h3{font-family:'Pinyon Script',cursive;font-weight:400;font-size:30px;color:var(--merah);text-align:center}
+  .keranjang .baris{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--emas)}
+  .bnama{text-align:left;min-width:0}
+  .bnama small{display:block;font-style:italic;font-size:13px;color:#7A5A52}
+  .keranjang .stepper button{width:30px;height:30px;font-size:18px}
+  .subtotal{margin-top:12px;text-align:right;font-size:18px}
+  .kosong{font-style:italic;font-size:14px;color:#7A5A52;padding:8px 0;text-align:center}
+  .chipKeranjang{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:50;padding:12px 22px;border-radius:999px;
+    border:1.5px solid var(--emas);background:var(--merah-tua);color:var(--emas-muda);font:700 15px 'Libre Caslon Text',serif;
+    cursor:pointer;box-shadow:0 8px 18px rgba(0,0,0,.45);white-space:nowrap}
+  .chipKeranjang[hidden]{display:none}
 
   /* ===== Pembayaran ===== */
   .bayar{position:fixed;inset:0;z-index:100;display:none;overflow-y:auto;padding:24px 14px 40px;
@@ -131,6 +156,22 @@
 
 <div class="dots" id="dots"></div>
 
+<div class="beli">
+  <div class="stepper" aria-label="Jumlah">
+    <button onclick="ubahQtyBaru(-1)" aria-label="Kurangi jumlah">&minus;</button>
+    <span id="qtyBaru">1</span>
+    <button onclick="ubahQtyBaru(1)" aria-label="Tambah jumlah">+</button>
+  </div>
+  <button class="tambah" onclick="tambahKeranjang()">Tambah ke keranjang</button>
+</div>
+<p class="umpan" id="umpan" aria-live="polite"></p>
+
+<div class="keranjang" id="keranjang">
+  <h3>Keranjang</h3>
+  <div id="isiKeranjang"></div>
+  <div class="subtotal" id="subtotal"></div>
+</div>
+
 <div class="meja">
   <h3>Duduk di mana?</h3>
   <small>Pilih nomor meja, kami antar ke sana</small>
@@ -141,6 +182,7 @@
 
 <button class="order" onclick="pesan()">Kirim pesanan</button>
 <p class="catatan" id="catatan" aria-live="polite"></p>
+<button class="chipKeranjang" id="chipKeranjang" onclick="keKeranjang()" hidden></button>
 
 
 <div class="bayar" id="bayar" role="dialog" aria-modal="true" aria-label="Pembayaran">
@@ -148,10 +190,7 @@
     <h3>Tinggal satu langkah</h3>
     <div class="ringkas" id="ringkas"></div>
     <div class="total" id="total"></div>
-    <div id="tampilNama" style="display:none;margin-top:10px;font-size:15px;text-align:center;">
-  Atas Nama: <b id="namaFinal"></b><br>
-  Kode pesanan <b id="kodeFinal">KPYF</b>. Menunggu pembayaran, pesanan belum masuk dapur.
-</div>
+    <div class="status" id="statusBayar" aria-live="polite"></div>
     <div class="tab">
       <button class="on" onclick="tab(0,this)">Kasir</button>
       <button onclick="tab(1,this)">Transfer</button>
@@ -211,6 +250,68 @@ function render(){
 function geser(d){ idx = (idx + d + menus.length) % menus.length; render(); resetTimer(); }
 function resetTimer(){ clearInterval(timer); timer = setInterval(()=>{ idx=(idx+1)%menus.length; render(); }, 4500); }
 
+const rupiah = n => 'Rp ' + n.toLocaleString('id-ID');
+menus.forEach(m => { m.angka = parseInt(m.harga.replace(/\D/g,''),10); });
+const BATAS_QTY = 20;
+let keranjang = [];   // [{nama, qty}]
+let qtyBaru = 1, keranjangTerlihat = false;
+try{
+  const simpanan = JSON.parse(localStorage.getItem('meow_keranjang') || '[]');
+  if(Array.isArray(simpanan)) keranjang = simpanan.filter(x => x && menus.some(m => m.nama === x.nama) && Number.isInteger(x.qty) && x.qty > 0 && x.qty <= BATAS_QTY);
+}catch(e){}
+
+const cariMenu = nama => menus.find(m => m.nama === nama);
+const totalKeranjang = () => keranjang.reduce((s,x) => s + cariMenu(x.nama).angka * x.qty, 0);
+const jumlahItem = () => keranjang.reduce((s,x) => s + x.qty, 0);
+
+function ubahQtyBaru(d){
+  qtyBaru = Math.min(BATAS_QTY, Math.max(1, qtyBaru + d));
+  document.getElementById('qtyBaru').innerText = qtyBaru;
+}
+function tambahKeranjang(){
+  const m = menus[idx];
+  const ada = keranjang.find(x => x.nama === m.nama);
+  if(ada) ada.qty = Math.min(BATAS_QTY, ada.qty + qtyBaru); else keranjang.push({nama:m.nama, qty:qtyBaru});
+  document.getElementById('umpan').innerText = '\u2713 ' + qtyBaru + '\u00d7 ' + m.nama + ' masuk keranjang';
+  qtyBaru = 1; document.getElementById('qtyBaru').innerText = 1;
+  gambarKeranjang();
+}
+function ubahItem(i, d){
+  const it = keranjang[i]; if(!it) return;
+  it.qty = Math.min(BATAS_QTY, it.qty + d);
+  if(it.qty <= 0) keranjang.splice(i,1);
+  gambarKeranjang();
+}
+function updateChip(){
+  const c = document.getElementById('chipKeranjang');
+  c.hidden = !keranjang.length || keranjangTerlihat;
+  c.innerText = '\uD83D\uDED2 ' + jumlahItem() + ' item \u00b7 ' + rupiah(totalKeranjang());
+}
+function keKeranjang(){
+  document.getElementById('keranjang').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function gambarKeranjang(){
+  try{ localStorage.setItem('meow_keranjang', JSON.stringify(keranjang)); }catch(e){}
+  const box = document.getElementById('isiKeranjang');
+  if(!keranjang.length){
+    box.innerHTML = '<p class="kosong">Keranjang masih kosong. Pilih menu di atas, lalu ketuk Tambah ke keranjang.</p>';
+    document.getElementById('subtotal').innerHTML = '';
+  } else {
+    box.innerHTML = keranjang.map((x,i) => {
+      const m = cariMenu(x.nama);
+      return '<div class="baris"><div class="bnama"><b>' + x.nama + '</b><small>' + rupiah(m.angka) + ' \u00b7 ' + rupiah(m.angka * x.qty) + '</small></div>' +
+        '<div class="stepper"><button onclick="ubahItem(' + i + ',-1)" aria-label="Kurangi ' + x.nama + '">&minus;</button><span>' + x.qty + '</span>' +
+        '<button onclick="ubahItem(' + i + ',1)" aria-label="Tambah ' + x.nama + '">+</button></div></div>';
+    }).join('');
+    document.getElementById('subtotal').innerHTML = 'Total <b>' + rupiah(totalKeranjang()) + '</b>';
+  }
+  updateChip();
+}
+if('IntersectionObserver' in window){
+  new IntersectionObserver(es => { keranjangTerlihat = es[0].isIntersecting; updateChip(); }, {threshold:.2})
+    .observe(document.getElementById('keranjang'));
+}
+
 const grid = document.getElementById('mejaGrid');
 for(let i=1;i<=12;i++){
   const b=document.createElement('button');
@@ -228,32 +329,42 @@ function pilihTakeaway(el){
   document.querySelectorAll('#mejaGrid button').forEach(x=>x.classList.remove('on'));
   el.classList.add('on');
 }
-let pesananDikunci=null;
-function pesan(){
+let sedangPesan=false;
+async function pesan(){
+  if(sedangPesan) return;
   const c=document.getElementById('catatan');
+  if(!keranjang.length){ c.innerHTML='Keranjang masih kosong. Tambahkan menu dulu ya.'; return; }
   if(mejaDipilih===null){ c.innerHTML='Pilih nomor meja dulu ya, atau pilih dibawa pulang.'; return; }
   const nm=document.getElementById('nama_pemesan').value.trim();
   if(!nm){ c.innerHTML='Tulis nama kamu dulu ya, biar kami tahu siapa yang dipanggil.'; return; }
-  c.innerHTML='';
-  clearInterval(timer);
-  const m=menus[idx];
-  const angka=parseInt(m.harga.replace(/\D/g,''),10);
-  const rp='Rp '+angka.toLocaleString('id-ID');
-  const lokasi=typeof mejaDipilih==='number'?'Meja '+mejaDipilih:'Dibawa pulang';
-  pesananDikunci={m,angka};
-  document.getElementById('ringkas').innerHTML=m.nama+'<br>'+lokasi;
-  document.getElementById('total').innerText=rp;
-  document.getElementById('nomTf').innerText='Transfer tepat '+rp;
-  document.getElementById('nomQ').innerText='Bayar tepat '+rp;
-  tab(0,document.querySelector('.tab button'));
-  document.getElementById('bayar').classList.add('buka');
-  const st=document.getElementById('statusBayar');
-  st.className='status'; st.innerText='Mengirim pesanan...';
-  if(window.kirimKeDapur){
-    window.kirimKeDapur({menu:m.nama,total:angka,lokasi:lokasi,nama:nm},(teks,ok)=>{
-      st.innerText=teks; st.className='status'+(ok?' ok':'');
-    });
-  } else { st.innerText='Firebase belum terpasang, pesanan belum terkirim ke dapur.'; }
+  sedangPesan=true;
+  try{
+    c.innerHTML='';
+    clearInterval(timer);
+    const items=keranjang.map(x=>{ const m=cariMenu(x.nama); return {nama:m.nama, qty:x.qty, harga:m.angka}; });
+    const total=items.reduce((s,i)=>s+i.harga*i.qty,0);
+    const daftar=items.map(i=>i.qty+'\u00d7 '+i.nama);
+    const rp=rupiah(total);
+    const lokasi=typeof mejaDipilih==='number'?'Meja '+mejaDipilih:'Dibawa pulang';
+    document.getElementById('ringkas').innerHTML=daftar.join('<br>')+'<br><i>'+lokasi+'</i>';
+    document.getElementById('total').innerText=rp;
+    document.getElementById('nomTf').innerText='Transfer tepat '+rp;
+    document.getElementById('nomQ').innerText='Bayar tepat '+rp;
+    tab(0,document.querySelector('.tab button'));
+    document.getElementById('bayar').classList.add('buka');
+    const st=document.getElementById('statusBayar');
+    st.className='status'; st.innerText='Mengirim pesanan...';
+    if(window.kirimKeDapur){
+      const berhasil=await window.kirimKeDapur(
+        {menu:daftar.join(', '), items:items, total:total, lokasi:lokasi, nama:nm},
+        (teks,ok)=>{ st.innerText=teks; st.className='status'+(ok?' ok':''); }
+      );
+      if(berhasil===true){   // pesanan sudah tercatat, kosongkan keranjang supaya tidak terkirim dobel
+        keranjang=[]; gambarKeranjang();
+        document.getElementById('umpan').innerText='';
+      }
+    } else { st.innerText='Firebase belum terpasang, pesanan belum terkirim ke dapur.'; }
+  } finally { sedangPesan=false; }
 }
 function tab(n,el){
   document.querySelectorAll('.tab button').forEach(b=>b.classList.remove('on'));
@@ -267,6 +378,7 @@ function salin(t,el){
 }
 render();
 resetTimer();
+gambarKeranjang();
 </script>
 
 <script type="module">
@@ -287,8 +399,8 @@ let db = null, stop = null, mengirim = false;
 try { db = getFirestore(initializeApp(firebaseConfig)); } catch(e){ console.error(e); }
 
 window.kirimKeDapur = async (d, tampil) => {
-  if(!db || false){ tampil("Firebase belum diisi, pesanan belum terkirim ke dapur.",false); return; }
-  if(mengirim) return;
+  if(!db){ tampil("Firebase belum diisi, pesanan belum terkirim ke dapur.",false); return false; }
+  if(mengirim) return null;
   mengirim = true;
   if(stop){ stop(); stop=null; }
   try{
@@ -301,8 +413,12 @@ window.kirimKeDapur = async (d, tampil) => {
       else if(x.status==="selesai") tampil("Pesananmu sudah siap, kode "+kode+". Silakan diambil.",true);
       else if(x.status==="dibatalkan") tampil("Pesanan dibatalkan oleh kasir. Silakan tanya ke kasir.",false);
     });
-  }catch(e){ console.error(e); tampil("Gagal mengirim pesanan (" + (e.code || "error") + "). Cek internet lalu coba lagi.",false); }
-  finally{ mengirim = false; }
+    return true;
+  }catch(e){
+    console.error(e);
+    tampil("Gagal mengirim pesanan ("+(e.code||"error")+"). Cek internet lalu coba lagi.",false);
+    return false;
+  }finally{ mengirim = false; }
 };
 </script>
 </body>

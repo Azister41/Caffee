@@ -51,7 +51,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFirestore, collection, query, where, orderBy, limit, onSnapshot, doc, updateDoc, Timestamp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 
 // Isi dengan config yang SAMA seperti di halaman menu
@@ -66,7 +66,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app), auth = getAuth(app);
-let stop = null, awal = true, kenal = new Set();
+let stop = null, awal = true, kenal = new Set(), hariPantau = '';
 const $ = id => document.getElementById(id);
 
 window.masuk = async () => {
@@ -91,18 +91,27 @@ window.masuk = async () => {
 $('pw').addEventListener('keydown', e => { if(e.key === 'Enter') window.masuk(); });
 window.keluar = () => signOut(auth);
 
+// Pantau pesanan hari ini saja (maksimal 100), jadi pesanan lama atau sampah tidak memenuhi layar
+function mulai(){
+  if(stop){ stop(); stop = null; }
+  const awalHari = new Date(); awalHari.setHours(0,0,0,0);
+  hariPantau = awalHari.toDateString();
+  awal = true; kenal = new Set();
+  stop = onSnapshot(
+    query(collection(db,'pesanan'), where('dibuat','>=',Timestamp.fromDate(awalHari)), orderBy('dibuat','desc'), limit(100)),
+    render,
+    e => { console.error(e); alert('Gagal baca pesanan: ' + e.code); }
+  );
+}
+
 onAuthStateChanged(auth, user => {
   $('login').hidden = !!user; $('app').hidden = !user;
   if(stop){ stop(); stop = null; }
-  if(user){
-    awal = true; kenal = new Set();
-    stop = onSnapshot(
-  query(collection(db,'pesanan'), orderBy('dibuat','desc'), limit(40)),
-  render,
-  e => { console.error(e); alert('Gagal baca pesanan: ' + e.code); }
-);
-  }
+  if(user) mulai();
 });
+
+// Kalau halaman dibiarkan terbuka sampai ganti hari, mulai ulang pantauan
+setInterval(() => { if(auth.currentUser && new Date().toDateString() !== hariPantau) mulai(); }, 5 * 60 * 1000);
 
 let ctx = null;
 const buka = () => {
@@ -132,8 +141,12 @@ function tiket(d, id, tombol){
   const k = document.createElement('span'); k.className = 'kode'; k.textContent = '#' + id.slice(0,4).toUpperCase();
   const t = document.createElement('span'); t.textContent = 'Rp ' + Number(d.total||0).toLocaleString('id-ID');
   r.append(k, t);
-  const m = document.createElement('div'); m.className = 'menu'; m.textContent = d.menu;
-  const n = document.createElement('div'); n.className = 'kecil'; n.textContent = d.nama + ' | ' + d.lokasi;
+  const m = document.createElement('div'); m.className = 'menu';
+  if(Array.isArray(d.items) && d.items.length){
+    d.items.forEach(it => { const b = document.createElement('div'); b.textContent = (it.qty || 1) + '\u00d7 ' + it.nama; m.append(b); });
+  } else { m.textContent = d.menu; }
+  const jam = (d.dibuat && d.dibuat.toDate) ? d.dibuat.toDate().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '';
+  const n = document.createElement('div'); n.className = 'kecil'; n.textContent = d.nama + ' | ' + d.lokasi + (jam ? ' | ' + jam : '');
   const a = document.createElement('div'); a.className = 'aksi';
   tombol.forEach(([teks, fn, cls]) => { const b = document.createElement('button'); b.textContent = teks; if(cls) b.className = cls; b.onclick = fn; a.append(b); });
   el.append(r, m, n, a);
