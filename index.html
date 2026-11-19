@@ -283,11 +283,13 @@ const firebaseConfig = {
   appId: "1:465437187056:web:71ca80ad491623ea411b35"
 };
 
-let db = null, stop = null;
+let db = null, stop = null, mengirim = false;
 try { db = getFirestore(initializeApp(firebaseConfig)); } catch(e){ console.error(e); }
 
 window.kirimKeDapur = async (d, tampil) => {
   if(!db || false){ tampil("Firebase belum diisi, pesanan belum terkirim ke dapur.",false); return; }
+  if(mengirim) return;
+  mengirim = true;
   if(stop){ stop(); stop=null; }
   try{
     const ref = await addDoc(collection(db,"pesanan"), {...d, status:"menunggu_bayar", dibuat:serverTimestamp()});
@@ -299,7 +301,8 @@ window.kirimKeDapur = async (d, tampil) => {
       else if(x.status==="selesai") tampil("Pesananmu sudah siap, kode "+kode+". Silakan diambil.",true);
       else if(x.status==="dibatalkan") tampil("Pesanan dibatalkan oleh kasir. Silakan tanya ke kasir.",false);
     });
-  }catch(e){ console.error(e); tampil("Gagal mengirim pesanan. Cek internet lalu coba lagi.",false); }
+  }catch(e){ console.error(e); tampil("Gagal mengirim pesanan (" + (e.code || "error") + "). Cek internet lalu coba lagi.",false); }
+  finally{ mengirim = false; }
 };
 </script>
 </body>

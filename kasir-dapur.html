@@ -72,8 +72,23 @@ const $ = id => document.getElementById(id);
 window.masuk = async () => {
   $('err').innerText = '';
   try { await signInWithEmailAndPassword(auth, $('em').value.trim(), $('pw').value); }
-  catch(e){ $('err').innerText = 'Email atau kata sandi salah.'; }
+  catch(e){
+    const peta = {
+      'auth/invalid-credential': 'Email atau kata sandi salah.',
+      'auth/wrong-password': 'Email atau kata sandi salah.',
+      'auth/user-not-found': 'Akun dengan email ini belum dibuat di Firebase.',
+      'auth/invalid-email': 'Format email tidak valid.',
+      'auth/operation-not-allowed': 'Login Email/Password belum diaktifkan di Firebase.',
+      'auth/unauthorized-domain': 'Alamat web ini belum diizinkan di Firebase Authentication.',
+      'auth/operation-not-supported-in-this-environment': 'Buka lewat alamat http/https, jangan dari file langsung.',
+      'auth/network-request-failed': 'Tidak ada koneksi internet.',
+      'auth/too-many-requests': 'Terlalu banyak percobaan, tunggu sebentar.'
+    };
+    console.error(e);
+    $('err').innerText = (peta[e.code] || 'Gagal masuk.') + ' (' + e.code + ')';
+  }
 };
+$('pw').addEventListener('keydown', e => { if(e.key === 'Enter') window.masuk(); });
 window.keluar = () => signOut(auth);
 
 onAuthStateChanged(auth, user => {
@@ -86,6 +101,8 @@ onAuthStateChanged(auth, user => {
   render,
   e => { console.error(e); alert('Gagal baca pesanan: ' + e.code); }
 );
+  }
+});
 
 let ctx = null;
 const buka = () => {
