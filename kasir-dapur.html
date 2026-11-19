@@ -20,6 +20,12 @@
   @media(min-width:760px){.dua{display:grid;grid-template-columns:1fr 1fr;gap:20px}}
   .tiket{background:var(--kertas);color:var(--tinta);padding:12px 14px;border-radius:4px;border-left:8px solid #C0392B}
   .tiket.lunas{border-left-color:#2E7D32}
+  .tiket.selesai{border-left-color:#8E8E8E}
+  .tiket.dibatalkan{border-left-color:#C0392B;opacity:.7}
+  .batal{color:#C0392B;font-weight:700}
+  .ringkas{font-size:13px;color:#D9C2A0;margin:-2px 0 10px}
+  .riwayat{margin-top:26px;padding-top:6px;border-top:1px solid rgba(201,154,59,.35)}
+  @media(min-width:760px){#riwayatList{grid-template-columns:1fr 1fr}}
   .baris{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
   .kode{font-weight:700;font-size:18px}
   .menu{font-size:17px;margin:4px 0}
@@ -47,6 +53,11 @@
     <div><h2>Menunggu bayar (kasir)</h2><div class="grid" id="kolBayar"></div></div>
     <div><h2>Masuk dapur (sudah lunas)</h2><div class="grid" id="kolDapur"></div></div>
   </div>
+  <div class="riwayat">
+    <h2>Riwayat pesanan (24 jam terakhir)</h2>
+    <p class="ringkas" id="ringkas">Pesanan selesai dan dibatalkan tampil di sini, lalu hilang otomatis setelah 24 jam.</p>
+    <div class="grid" id="riwayatList"></div>
+  </div>
 </div>
 
 <script type="module">
@@ -66,7 +77,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app), auth = getAuth(app);
-let stop = null, awal = true, kenal = new Set(), hariPantau = '';
+let stop = null, awal = true, kenal = new Set(), hariPantau = '', terakhir = null;
 const $ = id => document.getElementById(id);
 
 window.masuk = async () => {
@@ -91,14 +102,16 @@ window.masuk = async () => {
 $('pw').addEventListener('keydown', e => { if(e.key === 'Enter') window.masuk(); });
 window.keluar = () => signOut(auth);
 
-// Pantau pesanan hari ini saja (maksimal 100), jadi pesanan lama atau sampah tidak memenuhi layar
+// Pantau pesanan 24 jam terakhir (maksimal 200). Kolom kasir dan dapur hanya menampilkan pesanan hari ini,
+// sedangkan riwayat menampilkan pesanan selesai dalam 24 jam terakhir.
 function mulai(){
   if(stop){ stop(); stop = null; }
   const awalHari = new Date(); awalHari.setHours(0,0,0,0);
   hariPantau = awalHari.toDateString();
+  const batas24 = new Date(Date.now() - 24*60*60*1000);
   awal = true; kenal = new Set();
   stop = onSnapshot(
-    query(collection(db,'pesanan'), where('dibuat','>=',Timestamp.fromDate(awalHari)), orderBy('dibuat','desc'), limit(100)),
+    query(collection(db,'pesanan'), where('dibuat','>=',Timestamp.fromDate(batas24)), orderBy('dibuat','desc'), limit(200)),
     render,
     e => { console.error(e); alert('Gagal baca pesanan: ' + e.code); }
   );
@@ -132,11 +145,22 @@ function bunyi(){
     o.start(); o.stop(ctx.currentTime + .4);
   }catch(e){}
 }
-const ubah = (id, status) => updateDoc(doc(db,'pesanan',id), {status});
+// Saat selesai/dibatalkan, isi hapusPada (dibuat + 24 jam) supaya TTL Firestore menghapusnya otomatis
+async function ubah(id, status, d){
+  const data = { status };
+  if((status === 'selesai' || status === 'dibatalkan') && d && d.dibuat && d.dibuat.seconds != null)
+    data.hapusPada = new Timestamp(d.dibuat.seconds + 24*60*60, d.dibuat.nanoseconds);
+  const ref = doc(db,'pesanan',id);
+  try { await updateDoc(ref, data); }
+  catch(e){
+    if(e.code === 'permission-denied' && data.hapusPada){ try { await updateDoc(ref, { status }); return; } catch(e2){ e = e2; } }
+    console.error(e); alert('Gagal mengubah status: ' + e.code);
+  }
+}
 
 function tiket(d, id, tombol){
   const el = document.createElement('div');
-  el.className = 'tiket ' + (d.status==='lunas' ? 'lunas' : '');
+  el.className = 'tiket ' + (d.status==='lunas' ? 'lunas' : d.status==='selesai' ? 'selesai' : d.status==='dibatalkan' ? 'dibatalkan' : '');
   const r = document.createElement('div'); r.className = 'baris';
   const k = document.createElement('span'); k.className = 'kode'; k.textContent = '#' + id.slice(0,4).toUpperCase();
   const t = document.createElement('span'); t.textContent = 'Rp ' + Number(d.total||0).toLocaleString('id-ID');
@@ -147,28 +171,49 @@ function tiket(d, id, tombol){
   } else { m.textContent = d.menu; }
   const jam = (d.dibuat && d.dibuat.toDate) ? d.dibuat.toDate().toLocaleTimeString('id-ID', {hour:'2-digit', minute:'2-digit'}) : '';
   const n = document.createElement('div'); n.className = 'kecil'; n.textContent = d.nama + ' | ' + d.lokasi + (jam ? ' | ' + jam : '');
+  if(d.status === 'dibatalkan'){ const bt = document.createElement('b'); bt.className = 'batal'; bt.textContent = ' | DIBATALKAN'; n.append(bt); }
   const a = document.createElement('div'); a.className = 'aksi';
   tombol.forEach(([teks, fn, cls]) => { const b = document.createElement('button'); b.textContent = teks; if(cls) b.className = cls; b.onclick = fn; a.append(b); });
-  el.append(r, m, n, a);
+  el.append(r, m, n);
+  if(tombol.length) el.append(a);
   return el;
 }
 
 function render(snap){
-  const bayar = $('kolBayar'), dapur = $('kolDapur');
-  bayar.innerHTML = ''; dapur.innerHTML = '';
-  let baru = false;
-  snap.forEach(s => {
+  if(snap) terakhir = snap;
+  if(!terakhir) return;
+  const bayar = $('kolBayar'), dapur = $('kolDapur'), riwayat = $('riwayatList');
+  bayar.innerHTML = ''; dapur.innerHTML = ''; riwayat.innerHTML = '';
+  const sekarang = Date.now(), batas = sekarang - 24*60*60*1000;
+  const awalHariMs = new Date().setHours(0,0,0,0);
+  let baru = false, jumlah = 0, omzet = 0, batal = 0;
+  terakhir.forEach(s => {
     const d = s.data(), id = s.id;
-    if(!kenal.has(id+d.status)){ kenal.add(id+d.status); if(!awal) baru = true; }
+    const waktu = (d.dibuat && d.dibuat.toMillis) ? d.dibuat.toMillis() : sekarang;
+    if(snap && !kenal.has(id+d.status)){ kenal.add(id+d.status); if(!awal) baru = true; }
+    if(d.status === 'selesai' || d.status === 'dibatalkan'){
+      if(waktu >= batas){
+        riwayat.append(tiket(d, id, []));
+        if(d.status === 'selesai'){ jumlah++; omzet += Number(d.total||0); } else batal++;
+      }
+      return;
+    }
+    if(waktu < awalHariMs) return;   // kolom kasir dan dapur: pesanan hari ini saja
     if(d.status === 'menunggu_bayar')
-      bayar.append(tiket(d, id, [['Batalkan', () => ubah(id,'dibatalkan')], ['Sudah dibayar', () => ubah(id,'lunas'), 'ok']]));
+      bayar.append(tiket(d, id, [['Batalkan', () => ubah(id,'dibatalkan', d)], ['Sudah dibayar', () => ubah(id,'lunas'), 'ok']]));
     else if(d.status === 'lunas')
-      dapur.append(tiket(d, id, [['Selesai', () => ubah(id,'selesai'), 'ok']]));
+      dapur.append(tiket(d, id, [['Selesai', () => ubah(id,'selesai', d), 'ok']]));
   });
-  [bayar, dapur].forEach(x => { if(!x.children.length){ const p = document.createElement('p'); p.className = 'kosong'; p.textContent = 'Belum ada pesanan.'; x.append(p); } });
+  [bayar, dapur, riwayat].forEach(x => { if(!x.children.length){ const p = document.createElement('p'); p.className = 'kosong'; p.textContent = 'Belum ada pesanan.'; x.append(p); } });
+  $('ringkas').textContent = (jumlah || batal)
+    ? jumlah + ' selesai (Rp ' + omzet.toLocaleString('id-ID') + ') | ' + batal + ' dibatalkan | hilang otomatis setelah 24 jam'
+    : 'Pesanan selesai dan dibatalkan tampil di sini, lalu hilang otomatis setelah 24 jam.';
   if(baru) bunyi();
   awal = false;
 }
+
+// Segarkan tiap menit supaya pesanan yang sudah lewat 24 jam hilang sendiri dari riwayat
+setInterval(() => { if(auth.currentUser) render(); }, 60 * 1000);
 </script>
 </body>
 </html>
