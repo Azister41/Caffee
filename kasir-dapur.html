@@ -81,15 +81,29 @@ onAuthStateChanged(auth, user => {
   if(stop){ stop(); stop = null; }
   if(user){
     awal = true; kenal = new Set();
-    stop = onSnapshot(query(collection(db,'pesanan'), orderBy('dibuat','desc'), limit(40)), render);
-  }
-});
+    stop = onSnapshot(
+  query(collection(db,'pesanan'), orderBy('dibuat','desc'), limit(40)),
+  render,
+  e => { console.error(e); alert('Gagal baca pesanan: ' + e.code); }
+);
+
+let ctx = null;
+const buka = () => {
+  try{
+    ctx = ctx || new (window.AudioContext||window.webkitAudioContext)();
+    if(ctx.state === 'suspended') ctx.resume();
+  }catch(e){}
+};
+document.addEventListener('click', buka);
+document.addEventListener('touchstart', buka);
 
 function bunyi(){
   try{
-    const c = new (window.AudioContext||window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
-    o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = .15;
-    o.start(); o.stop(c.currentTime + .25);
+    buka();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = .3;
+    o.start(); o.stop(ctx.currentTime + .4);
   }catch(e){}
 }
 const ubah = (id, status) => updateDoc(doc(db,'pesanan',id), {status});
