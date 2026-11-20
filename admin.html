@@ -29,6 +29,41 @@
   td,th{padding:8px;border-bottom:1px solid #e8d9b0;text-align:left}
   .small{font-size:12px;opacity:.7}
   .linkKasir{display:block;text-align:center;color:#E8C87A;margin:14px 0;text-decoration:none}
+  .lbl{
+  display:block;
+  font-size:13px;
+  font-weight:700;
+  margin:12px 0 5px 2px;
+  color:#5b2a2a;
+  text-align:left;
+}
+#page-absen select, #page-absen input{
+  #page-absen input, #page-absen select{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px 14px;
+  border:1px solid #e8d5a3;
+  border-radius:12px;
+  background:#fff;
+  font-size:16px;
+  font-family:inherit;
+  color:#333;
+  outline:none;
+  appearance:none;
+  -webkit-appearance:none;
+}
+#page-absen select{
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1l5 5 5-5' fill='none' stroke='%235b2a2a' stroke-width='2'/></svg>");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  padding-right:36px;
+}
+#page-absen .row{
+  gap:10px;
+}
+#page-absen .row input, #page-absen .row select{
+  flex:1;
+}
 </style>
 </head>
 <body>
@@ -57,7 +92,38 @@
     <div class="card"><b>Daftar Stok</b><div id="listStok">Loading...</div></div>
   </div>
   <div id="page-cust" style="display:none"><div class="card"><b>Data Customer</b><div id="listCust">Loading...</div></div></div>
-  <div id="page-absen" style="display:none"><div class="card"><b>Rekap Absensi</b><div id="listAbsen">Belum ada data.</div></div></div>
+  <div id="page-absen" style="display:none">
+  <div class="card"><b>Input Absensi</b>
+  <div class="lbl">Nama Karyawan</div>
+  <select id="absNama" style="width:100%;padding:12px 14px;border:1px solid #e8d5a3;border-radius:12px;background:#fff;font-size:16px;color:#333;box-sizing:border-box;display:block">
+    <option value="azis">azis</option>
+    <option value="fahim">fahim</option>
+    <option value="illa">illa</option>
+  </select>
+
+  <div class="lbl">Tanggal & Jam Masuk</div>
+  <div class="row">
+    <input id="absTanggal" type="date">
+    <input id="absMasuk" type="time">
+  </div>
+
+  <div class="lbl">Jam Pulang (isi pas pulang)</div>
+  <input id="absPulang" type="time">
+
+  <div class="lbl">Status Kehadiran</div>
+  <select id="absStatus" style="width:100%;padding:12px 14px;border:1px solid #e8d5a3;border-radius:12px;background:#fff;font-size:16px;color:#333;box-sizing:border-box;display:block">
+    <option value="Hadir">Hadir</option>
+    <option value="Izin">Izin</option>
+    <option value="Sakit">Sakit</option>
+    <option value="Alpha">Alpha</option>
+  </select>
+
+  <div class="lbl">Keterangan</div>
+  <input id="absKet" placeholder="Keterangan... misal: pulang cepat, dll">
+  <button class="act" onclick="saveAbsen()">Simpan Absensi</button>
+</div>
+  <div class="card"><b>Rekap Absensi</b><div id="listAbsen">Loading...</div></div>
+</div>
   <div id="page-rab" style="display:none">
     <div class="card"><b>Tambah RAB</b><input id="rabNama" placeholder="Keperluan"><input id="rabBiaya" type="number" placeholder="Biaya Rp"><button class="act" onclick="saveRAB()">Simpan RAB</button></div>
     <div class="card"><b>Daftar RAB</b><div id="listRAB">Loading...</div><br><b id="totalRAB"></b></div>
@@ -69,6 +135,62 @@
   <a class="linkKasir" href="kasir-dapur.html">← Ke Kasir dan Dapur</a>
 </div>
 <script>
+    function hapusCustomer(nama){
+  if(!confirm("Hapus semua pesanan atas nama "+nama+" ?")){
+    return;
+  }
+  db.collection("pesanan").where("nama","==",nama).get().then(s=>{
+    s.forEach(d=>{ d.ref.delete(); });
+    alert("Terhapus!");
+  });
+}
+// SET TANGGAL HARI INI OTOMATIS
+document.getElementById('absTanggal').valueAsDate = new Date();
+
+function saveAbsen(){
+  let nama = document.getElementById('absNama').value;
+  let tgl = document.getElementById('absTanggal').value;
+  let masuk = document.getElementById('absMasuk').value;
+  let pulang = document.getElementById('absPulang').value;
+  let status = document.getElementById('absStatus').value;
+  let ket = document.getElementById('absKet').value;
+
+  if(!tgl){ alert("Tanggalnya isi dulu bang"); return; }
+  if(status=="Hadir" && !masuk){ alert("Jam masuknya isi dulu"); return; }
+
+  db.collection("absensi").add({
+    nama: nama,
+    tanggal: tgl,
+    masuk: masuk,
+    pulang: pulang,
+    status: status,
+    ket: ket,
+    createdAt: new Date()
+  }).then(()=>{
+    alert("Absensi "+nama+" ke-save!");
+    document.getElementById('absKet').value="";
+    document.getElementById('absPulang').value="";
+    loadAbsen();
+  });
+}
+
+function loadAbsen(){
+  db.collection("absensi").orderBy("tanggal","desc").onSnapshot(s=>{
+    if(s.empty){ document.getElementById('listAbsen').innerHTML="Belum ada data."; return; }
+    let h="<table><tr><th>Tanggal</th><th>Nama</th><th>Masuk</th><th>Pulang</th><th>Status</th><th>Keterangan</th><th>Hapus</th></tr>";
+    s.forEach(d=>{
+      let a=d.data();
+      h+=`<tr><td>${a.tanggal}</td><td>${a.nama}</td><td>${a.masuk||"-"}</td><td>${a.pulang||"-"}</td><td>${a.status}</td><td>${a.ket||"-"}</td><td><button onclick="hapusAbsen('${d.id}')">Hapus</button></td></tr>`;
+    });
+    h+="</table>";
+    document.getElementById('listAbsen').innerHTML=h;
+  });
+}
+
+function hapusAbsen(id){
+  if(!confirm("Hapus absensi ini?")) return;
+  db.collection("absensi").doc(id).delete();
+}
   const OWNER_PASS = "1234";
   function loginAdmin(){
     let p = document.getElementById('pass').value.trim();
@@ -126,8 +248,8 @@
     db.collection("pesanan").onSnapshot(s=>{
       let map={};
       s.forEach(d=>{let p=d.data(); if(!p.nama) return; if(!map[p.nama]) map[p.nama]={nama:p.nama,wa:p.wa||'-',jml:0,total:0}; map[p.nama].jml++; map[p.nama].total+=p.total||0;});
-      let h="<table><tr><th>Nama</th><th>WA</th><th>Pesan</th><th>Total</th></tr>";
-      Object.values(map).forEach(c=>{h+=`<tr><td>${c.nama}</td><td>${c.wa}</td><td>${c.jml}x</td><td>Rp ${c.total.toLocaleString('id-ID')}</td></tr>`});
+      let h="<table><tr><th>Nama</th><th>WA</th><th>Pesan</th><th>Total</th><th>Hapus</th></tr>";
+Object.values(map).forEach(c=>{h+=`<tr><td>${c.nama}</td><td>${c.wa}</td><td>${c.jml}x</td><td>Rp ${c.total.toLocaleString('id-ID')}</td><td><button onclick="hapusCustomer('${c.nama}')">Hapus</button></td></tr>`});
       document.getElementById('listCust').innerHTML=h+"</table>";
       let all=[...s.docs].map(d=>d.data());
       let omsetHari=all.filter(p=>p.selesaiAt && Date.now()-p.selesaiAt<24*60*60*1000).reduce((a,p)=>a+(p.total||0),0);
@@ -142,6 +264,7 @@
       let h="", tot=0; s.forEach(d=>{let v=d.data(); tot+=v.biaya; h+=`<div style="display:flex;justify-content:space-between;padding:6px 0">${v.nama} <b>Rp ${v.biaya.toLocaleString('id-ID')}</b> <button onclick="db.collection('rab').doc('${d.id}').delete()">x</button></div>`});
       document.getElementById('listRAB').innerHTML=h||"Belum ada RAB"; document.getElementById('totalRAB').innerText="Total RAB: Rp "+tot.toLocaleString('id-ID');
     }, err=>{ document.getElementById('listRAB').innerHTML="ERROR: "+err.message; });
+    loadAbsen();
   }
 </script>
 </body>
