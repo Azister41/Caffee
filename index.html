@@ -178,8 +178,8 @@
   <div class="meja-grid" id="mejaGrid"></div>
   <button class="takeaway" id="takeaway" onclick="pilihTakeaway(this)">Dibawa pulang, tanpa meja</button>
   <input class="nama" id="nama_pemesan" maxlength="30" placeholder="Atas nama siapa?" autocomplete="off">
+  <input id="nomor_wa" type="text" inputmode="tel" placeholder="Nomor telp" style="width:100%;box-sizing:border-box;margin-top:10px;padding:14px;background:transparent;border:1px solid #C9A86A;border-radius:2px;font-family:'Libre Caslon Text',Georgia,serif;font-style:italic;font-size:17px;text-align:center;color:#7A1426;outline:none;">
 </div>
-
 <button class="order" onclick="pesan()">Kirim pesanan</button>
 <p class="catatan" id="catatan" aria-live="polite"></p>
 <button class="chipKeranjang" id="chipKeranjang" onclick="keKeranjang()" hidden></button>
@@ -336,6 +336,7 @@ async function pesan(){
   if(!keranjang.length){ c.innerHTML='Keranjang masih kosong. Tambahkan menu dulu ya.'; return; }
   if(mejaDipilih===null){ c.innerHTML='Pilih nomor meja dulu ya, atau pilih dibawa pulang.'; return; }
   const nm=document.getElementById('nama_pemesan').value.trim();
+  const wa=document.getElementById('nomor_wa').value.trim();
   if(!nm){ c.innerHTML='Tulis nama kamu dulu ya, biar kami tahu siapa yang dipanggil.'; return; }
   sedangPesan=true;
   try{
@@ -356,7 +357,7 @@ async function pesan(){
     st.className='status'; st.innerText='Mengirim pesanan...';
     if(window.kirimKeDapur){
       const berhasil=await window.kirimKeDapur(
-        {menu:daftar.join(', '), items:items, total:total, lokasi:lokasi, nama:nm},
+  {menu:daftar.join(', '), items:items, total:total, lokasi:lokasi, nama:nm, wa:wa},
         (teks,ok)=>{ st.innerText=teks; st.className='status'+(ok?' ok':''); }
       );
       if(berhasil===true){   // pesanan sudah tercatat, kosongkan keranjang supaya tidak terkirim dobel
